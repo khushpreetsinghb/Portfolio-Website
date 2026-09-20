@@ -16,12 +16,14 @@
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; background: #05070f; overscroll-behavior: none; }
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: radial-gradient(1200px 800px at 80% -10%, rgba(124,92,255,.18), transparent),
     radial-gradient(1000px 700px at 10% 10%, rgba(26,188,156,.14), transparent),
     linear-gradient(180deg, var(--bg0), var(--bg1));
+  background-color: #05070f;
+  overscroll-behavior: none;
   color: var(--text);
   overflow-x: hidden;
   line-height: 1.6;
@@ -38,6 +40,7 @@ body.no-3d { background: linear-gradient(135deg, #0b1022, #131a36 60%, #0b1022);
   z-index: 0;
   pointer-events: none;
   opacity: 0.95;
+  background: #05070f;
 }
 body.no-3d #webgl { display: none; }
 

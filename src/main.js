@@ -5,31 +5,34 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 gsap.registerPlugin(ScrollTrigger);
 
 const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const isMobile = window.matchMedia('(max-width: 768px)').matches;
+const mqMobile = window.matchMedia('(max-width: 768px)');
+const isMobileView = () => mqMobile.matches;
 
 /* ---------- 3D bold geometry background ---------- */
 function initWebGL() {
   const canvas = document.getElementById('webgl');
   if (!canvas) return;
-  if (prefersReduced || isMobile) {
+  if (prefersReduced) {
     document.body.classList.add('no-3d');
     return;
   }
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
   } catch (e) {
     document.body.classList.add('no-3d');
     return;
   }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x05070f, 1);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileView() ? 1.5 : 1.75));
   renderer.setSize(window.innerWidth, window.innerHeight);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x05070f, 0.035);
+  scene.background = new THREE.Color(0x05070f);
+  scene.fog = new THREE.FogExp2(0x05070f, 0.028);
 
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-  camera.position.set(0, 0, 10);
+  camera.position.set(0, 0, isMobileView() ? 13 : 10);
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.7));
   const key = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -52,39 +55,56 @@ function initWebGL() {
     color: 0xffb454, wireframe: true, transparent: true, opacity: 0.55,
   });
 
-  // Hero cluster
+  // Hero cluster (lighter geometry on mobile)
+  const mobile = isMobileView();
   const heroGroup = new THREE.Group();
-  const knot = new THREE.Mesh(new THREE.TorusKnotGeometry(1.7, 0.45, 220, 32), tealMat);
+  const knot = new THREE.Mesh(
+    mobile
+      ? new THREE.TorusKnotGeometry(1.4, 0.38, 80, 12)
+      : new THREE.TorusKnotGeometry(1.7, 0.45, 150, 22),
+    tealMat
+  );
   heroGroup.add(knot);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.04, 16, 120), violetMat);
+  const ring = new THREE.Mesh(
+    mobile
+      ? new THREE.TorusGeometry(2.4, 0.04, 10, 48)
+      : new THREE.TorusGeometry(2.8, 0.04, 16, 96),
+    violetMat
+  );
   ring.rotation.x = Math.PI / 2.4;
   heroGroup.add(ring);
   const sat = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 0), goldMat);
   sat.position.set(2.6, 1, 0);
   heroGroup.add(sat);
-  heroGroup.position.set(2.6, 0, 0);
+  heroGroup.position.set(mobile ? 0 : 2.6, mobile ? 0.6 : 0, mobile ? -1 : 0);
+  if (mobile) heroGroup.scale.setScalar(0.85);
   scene.add(heroGroup);
 
   // Works cluster
   const worksGroup = new THREE.Group();
-  const ico = new THREE.Mesh(new THREE.IcosahedronGeometry(2.1, 1), violetMat);
+  const ico = new THREE.Mesh(new THREE.IcosahedronGeometry(mobile ? 1.6 : 2.1, 1), violetMat);
   worksGroup.add(ico);
   const inner = new THREE.Mesh(new THREE.OctahedronGeometry(1.1, 0), tealMat);
   worksGroup.add(inner);
-  worksGroup.position.set(-2.8, -12, -1);
+  worksGroup.position.set(mobile ? 0 : -2.8, -12, -1);
   scene.add(worksGroup);
 
   // Contact cluster
   const endGroup = new THREE.Group();
-  const oct = new THREE.Mesh(new THREE.OctahedronGeometry(1.8, 0), goldMat);
+  const oct = new THREE.Mesh(new THREE.OctahedronGeometry(mobile ? 1.4 : 1.8, 0), goldMat);
   endGroup.add(oct);
-  const torus = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.06, 16, 100), tealMat);
+  const torus = new THREE.Mesh(
+    mobile
+      ? new THREE.TorusGeometry(2.0, 0.06, 10, 48)
+      : new THREE.TorusGeometry(2.4, 0.06, 16, 80),
+    tealMat
+  );
   endGroup.add(torus);
-  endGroup.position.set(2.4, -24, -1);
+  endGroup.position.set(mobile ? 0 : 2.4, -24, -1);
   scene.add(endGroup);
 
-  // Particles
-  const COUNT = 1600;
+  // Particles (reduced on both for Home/End jump stability)
+  const COUNT = mobile ? 500 : 1100;
   const pos = new Float32Array(COUNT * 3);
   for (let i = 0; i < COUNT * 3; i += 3) {
     pos[i] = (Math.random() - 0.5) * 30;
@@ -109,17 +129,29 @@ function initWebGL() {
     scrollTrigger: { trigger: document.body, start: 'top top', end: 'bottom bottom', scrub: 1.5 },
   });
 
-  // Mouse parallax
+  // Mouse + touch parallax
   let mx = 0;
   let my = 0;
   window.addEventListener('mousemove', (e) => {
     mx = (e.clientX / window.innerWidth - 0.5) * 1.4;
     my = (e.clientY / window.innerHeight - 0.5) * 0.8;
   });
+  window.addEventListener(
+    'touchmove',
+    (e) => {
+      const t = e.touches[0];
+      if (!t) return;
+      mx = (t.clientX / window.innerWidth - 0.5) * 1.4;
+      my = (t.clientY / window.innerHeight - 0.5) * 0.8;
+    },
+    { passive: true }
+  );
 
-  const clock = new THREE.Clock();
-  function tick() {
-    const t = clock.getElapsedTime();
+  const timer = new THREE.Timer();
+  timer.connect(document);
+  function tick(timestamp) {
+    timer.update(timestamp);
+    const t = timer.getElapsed();
     knot.rotation.x = t * 0.18;
     knot.rotation.y = t * 0.24;
     ring.rotation.z = t * 0.1;
@@ -144,10 +176,15 @@ function initWebGL() {
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileView() ? 1.5 : 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    if (window.innerWidth < 768) {
-      document.body.classList.add('no-3d');
-    }
+    // Keep clusters centered on narrow screens
+    const m = isMobileView();
+    camera.position.z = m ? 13 : 10;
+    heroGroup.position.set(m ? 0 : 2.6, m ? 0.6 : 0, m ? -1 : 0);
+    heroGroup.scale.setScalar(m ? 0.85 : 1);
+    worksGroup.position.x = m ? 0 : -2.8;
+    endGroup.position.x = m ? 0 : 2.4;
   });
 }
 
@@ -262,6 +299,39 @@ function initUI() {
   const links = document.getElementById('nav-links');
   menuBtn?.addEventListener('click', () => links?.classList.toggle('open'));
   links?.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => links.classList.remove('open')));
+
+  // Contact form: AJAX submit + reset, plus reset on back-navigation
+  const contactForm = document.getElementById('contact-form');
+  const formStatus = document.getElementById('form-status');
+  if (contactForm) {
+    // Covers Formspree redirect / Back button / bfcache restoring old values
+    window.addEventListener('pageshow', () => {
+      contactForm.reset();
+    });
+
+    contactForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = contactForm.querySelector('button[type="submit"]');
+      if (formStatus) formStatus.textContent = 'Sending…';
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch(contactForm.action, {
+          method: 'POST',
+          body: new FormData(contactForm),
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error('send failed');
+        contactForm.reset();
+        if (formStatus) formStatus.textContent = 'Message sent — I reply within 24h.';
+      } catch (err) {
+        // Fallback: let the browser do a normal POST (still resets on return via pageshow)
+        contactForm.submit();
+        return;
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
 
   // Footer year
   const yr = document.getElementById('year');
