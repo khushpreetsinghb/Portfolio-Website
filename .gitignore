@@ -2,8 +2,8 @@
 node_modules/
 
 # Vite build output
-dist/
-dist-ssr/
+# dist/
+# dist-ssr/
 
 # Vite / local dev
 *.local
